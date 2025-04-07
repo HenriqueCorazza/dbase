@@ -4,7 +4,6 @@
 // #include <conio2.h>
 #include <ctype.h>
 #include <time.h>
-#include "Estrutura.h"
 
 struct Data{
 	char dia[3],mes[3],ano[5];
@@ -19,7 +18,6 @@ union Valor{
 };
 
 struct Dados{
-	char terminal;
 	union Valor Valor;
 	struct Dados *prox;		
 	
@@ -58,9 +56,13 @@ struct Dir {
 };
 typedef struct Dir Dir;
 
+#include "TadFilaDados.h"
 
-void Setdefaultto(Dir ** unidade, char *param ){
-	char var=param[0];
+void Setdefaultto(Dir ** unidade ){
+	char var;
+	
+	printf("SET DEFAULT TO ");
+	var = toupper(getch());
 	
 	if((*unidade)->und != var){
 		if((*unidade)->top == NULL)
@@ -80,15 +82,16 @@ char menu(){
 
 void inserirCampo(Arqs ** arq, Campos *campo){
 	Arqs *aux = *arq;
-	
+	Campos *auxCampo;
 	if(aux == NULL)
 		printf("\n Arquivo inexistente...");
 	else if(aux->campos == NULL)
 		aux->campos = campo;	
 	else{
-		while(aux->campos->prox != NULL )
-			aux->campos = aux->campos->prox;
-		aux->campos->prox = campo;
+		auxCampo = aux->campos;
+		while(auxCampo->prox != NULL )
+			auxCampo = auxCampo->prox;
+		auxCampo->prox = campo;
 	}
 }
 
@@ -141,7 +144,22 @@ void inserirArq(Dir **dir, Arqs *arq){
 //  return data;
 //}
 
-void criarArquivo(Arqs **arq, char *retorno){
+void AlteraStatus(Status *status, char bol){
+	if(bol == 1)
+		status->bol = 1;
+	else if(bol == 0)
+		status->bol = 0;
+	else
+		printf("\nValor invalido");
+}
+
+Status * NovoStatus(){
+	Status *status = (Status*)malloc(sizeof(Status));
+	status->bol = 1;
+	status->prox = NULL;
+}
+
+void criarArquivo(Arqs **arq){
 //	struct tm *data = retornaData();
 	
 	
@@ -149,19 +167,23 @@ void criarArquivo(Arqs **arq, char *retorno){
 	novo->ant = novo->prox = NULL;
 	//novo->data = 
 	//novo->hora
-	strcpy(novo->nomeDBF,retorno);
-	novo->status = NULL;
+	printf("Nome do arquivo: ");
+	fflush(stdin);
+	gets(novo->nomeDBF);
+	
+	
+	novo->status = (Status*)malloc(sizeof(Status));
 	novo->campos = NULL;
 	
 	*arq = novo;
 }
 
 
-void Create(Dir **dir, char *retorno){
+void Create(Dir **dir){
 	Arqs *novo = NULL;
 	char op;
 	
-	criarArquivo(&novo, retorno);
+	criarArquivo(&novo);
 	do{
 		criarCampos(&novo);
 		
@@ -211,16 +233,19 @@ void ExibirDir(Dir *dir){
 }
 
 
-Arqs* Use(Dir *dir, char *retorno){
+Arqs* Use(Dir *dir){
 	Arqs *auxArq;
-	char nome[50];
-	strcpy(nome,retorno);
+	char nome[20];
 	
 	if(dir->arqs == NULL){
 		printf("\nDiretorio sem arquivos :( ");
 		return NULL;
 	}
 	else{
+		
+		printf("\nDigite o nome do arquivo: ");
+		fflush(stdin);
+		gets(nome);
 		
 		auxArq = dir->arqs;
 		while(auxArq != NULL && strcmp(auxArq->nomeDBF,nome) != 0 )
@@ -239,6 +264,7 @@ Arqs* Use(Dir *dir, char *retorno){
 	
 }
 
+//Finalizar
 void ListStructure(Arqs *arq,char dir){
 	int i = 0;
 	Campos *auxCampos = NULL;
@@ -251,7 +277,7 @@ void ListStructure(Arqs *arq,char dir){
 	else{
 		printf("\nStructure for database: %c:%s.DBF",dir,arq->nomeDBF);
 		printf("\nNumber of data records: %d",0);//Add numero de records
-		printf("\nDate of last update: %s","01/01/2025");// add data
+		printf("\nDate of last update: %s","01/01/2025");// add data e tempo real ou escrito
 		printf("\nField\tField Name\tType\tWidth\tDec");
 		
 		auxCampos = arq->campos;
@@ -264,43 +290,41 @@ void ListStructure(Arqs *arq,char dir){
 	}
 }
 
-//void Append(Arqs **arq){
-//	if((*arq) == NULL)
-//		printf("\nArquivo vazio...\n");
-//	else
-//		criarCampos(&*arq);
-//}
-
 //Finalizar
 void inserirDados(Campos *campo, Dados *dado){
+	Dados *aux;
 	if(campo->Patual == NULL){
-		campo->Patual = campo->Pdados = dado;
+		campo->Patual = dado;
+		campo->Pdados = dado;
 	}
 	else
 	{
-		while(campo->Patual->prox != NULL)
-			campo->Patual = campo->Patual->prox;
-		campo->Patual->prox = dado;
-		campo->Patual = campo->Pdados;
+		aux = campo->Patual;
+		
+		while(aux->prox != NULL)
+			aux = aux->prox;
+		aux->prox = dado;
 	}
 		
 }
 
 void Numeric(Campos *campos){
 	Dados *novoDado =  (Dados*)malloc(sizeof(Dados));
+	novoDado->prox = NULL;
 	scanf("%f",&novoDado->Valor.ValorN);
 	inserirDados(campos,novoDado);
 }
 
 void Character(Campos *campos){
 	Dados *novoDado =  (Dados*)malloc(sizeof(Dados));
+	novoDado->prox= NULL;
 	fflush(stdin);
 	gets(novoDado->Valor.ValorC);
 	inserirDados(campos,novoDado);
 
 }
 
-//Finalizar
+//Finalizar - adicionar os demais tipos de variavel a receber
 void Append(Arqs **arq){
 	int i = 0, numero;
 	char terminal;
@@ -341,123 +365,239 @@ void Append(Arqs **arq){
 	printf("\nFIM");
 }
 
+char BuscarAtributo(Campos *campo, char *field, char *tipo){
+	Campos *aux = campo;
+	char flag = 0;
+	char atributo[50];
+	if(aux == NULL)
+		return 0;
+	else {
+		strcpy(atributo,aux->FieldName);
+		while(aux != NULL && stricmp(field,aux->FieldName) != 0){
+			aux = aux->prox;
+		}
+		if(aux != NULL){
+			
+			if(aux->Type == 'N' || aux->Type == 'L')
+				*tipo = 0;
+			else
+				*tipo = aux->Type;
+					
+			return 1;
+		}	
+		return 0;
+	}
+}
+
+char ComparaLetras(char *original, char *buscado){
+	int tamOriginal = strlen(original), tamBuscado = strlen(buscado), i;
+	
+	if(tamBuscado > tamOriginal)
+		return 0;
+	else if(tamBuscado <= 0)
+		printf("\nString sem tamanho");
+	else {
+		for(i = 0; i < tamBuscado; i++)
+			if(original[i] != buscado[i])
+				return 0;
+		
+		return 1;
+	}
+	
+}
 
 
-void List(Arqs *arq){
-	Campos *auxCampos, *auxCamposInterno;
+char BuscaNosCampos(Campos *campos, char *valor, char *atributo){
+	Campos *aux = campos;
 	Dados *auxDados;
-	char terminal;
+	int i;
+	char terminal, busca;
+	for(i = 0;aux != NULL; i++){
+		if(aux->Patual != NULL){
+			if(!stricmp(aux->FieldName,atributo)){
+				
+				terminal = aux->Type;
+				auxDados = aux->Patual;
+				
+				switch(terminal){
+					
+					case 'C':
+						busca = ComparaLetras(auxDados->Valor.ValorC,valor);
+						break;
+					case 'D':
+						busca = ComparaLetras(auxDados->Valor.ValorD,valor);
+						break;
+					case 'M':
+						busca = ComparaLetras(auxDados->Valor.ValorM,valor);
+						break;
+						
+					default: printf("\nTipo nao identificado");				
+				}
+				
+				if(busca)
+					return 1;
+				else
+					return 0;
+			}
+			
+		}
+		aux = aux->prox;
+	}
+	return 0;
+	
+}
+
+
+void List(Arqs *arq, char *atributo, char *valor, char flagFor){
+	Campos *auxCampos, *auxCamposInterno, *auxBusca;
+	Dados *auxDados;
+	char terminal, busca = -1, tipo = -1, buscaCampos = 1;
 	int i = 1;
-	char *valorDado;
+	char valorDado[50];
 	
 	if(arq == NULL)
 		printf("\nArquivo vazio...");
 	else if(arq->campos == NULL)
 		printf("\nCampos vazios...");
+	else if(arq->campos->Patual == NULL)
+		printf("\nNao ha campos nos dados");
 	else{
-		auxCampos = arq->campos;
-		printf("\n%-10s","Record");
-		for(; auxCampos != NULL ; i ++){
-			printf("%-10s",auxCampos->FieldName);
-			auxCampos = auxCampos->prox;
-		}
-	
-		auxCampos = arq->campos;
-		auxCamposInterno = auxCampos;
 		
-		for(i = 1;auxCampos != NULL; i++){
-			printf("\n%0.10d",i);
+		if(flagFor){
+			busca = BuscarAtributo(arq->campos,atributo,&tipo);
+		}
+		
+		if(busca == 0){
+			printf("\nO campo %s nao existe...",atributo);
+		}
+		else if(tipo == 0){
+			printf("\nO campo FOR deve utilizado com string");
+		}
+		else{
 			
+			auxCampos = arq->campos;
+			printf("\n%10.10s","Record");
+			for(; auxCampos != NULL ; i ++){
+				printf("%10.10s",auxCampos->FieldName);
+				auxCampos = auxCampos->prox;
+			}
+		
+			auxCampos = arq->campos;
+			auxCamposInterno = auxCampos;
 			
-			while(auxCamposInterno != NULL){
+			for(i = 1;auxCamposInterno->Patual != NULL; i++){
 				
-				
-				terminal = auxCampos->Type;
-				auxDados = auxCamposInterno->Patual;
-				
-				
-				if(terminal == 'N'){
-					printf("%10.f",auxDados->Valor.ValorD);
-				}else if(terminal == 'L'){
-					printf("%10.c",auxDados->Valor.ValorD);
-				}
-				else{
-					switch(terminal){
-						case 'C':
-							strcpy(valorDado,auxDados->Valor.ValorC);
-							break;
-						case 'D':
-							strcpy(valorDado,auxDados->Valor.ValorD);
-							break;
-						case 'M':
-							strcpy(valorDado,auxDados->Valor.ValorM);
-							break;
-						
+				if(flagFor){
+					buscaCampos = BuscaNosCampos(auxCamposInterno, valor, atributo);
 					
-					}
-					printf("%-10s",valorDado);
+					if(buscaCampos)
+						printf("\n%10.d",i);
 				}
-				auxCamposInterno->Patual = auxCamposInterno->Patual->prox;
-				auxCamposInterno = auxCamposInterno->prox;
+				else
+					printf("\n%10.d",i);
+				
+				while(auxCamposInterno != NULL){
+					
+					
+					terminal = auxCamposInterno->Type;
+					auxDados = auxCamposInterno->Patual;
+					
+					if(buscaCampos){
+						
+						if(terminal == 'N'){
+							printf("%10.f",auxDados->Valor.ValorN);
+						}else if(terminal == 'L'){
+							printf("%10.c",auxDados->Valor.ValorD);
+						}
+						else{
+							switch(terminal){
+								case 'C':
+									strcpy(valorDado,auxDados->Valor.ValorC);
+									break;
+								case 'D':
+									strcpy(valorDado,auxDados->Valor.ValorD);
+									break;
+								case 'M':
+									strcpy(valorDado,auxDados->Valor.ValorM);
+									break;
+							}
+							printf("%10s",valorDado);
+						}			
+					}
+						
+					auxCamposInterno->Patual = auxCamposInterno->Patual->prox;
+					auxCamposInterno = auxCamposInterno->prox;
+					
+				}
+				if(buscaCampos)
+					printf("\n");
+				
+				auxCamposInterno = auxCampos;
 				
 			}
-			printf("\n");
 			
-			auxCampos=auxCampos->prox;
-		}
+			//restaurar Patual ds itens
+			while(auxCampos != NULL)
+			{
+				auxCampos->Patual = auxCampos->Pdados;
+				auxCampos = auxCampos->prox;
+			}
+				
+			
+		}	
 		
 	}
 }
 
 void executar (){
 	char op;
-	char retorno[100], retorno2[100], comando[200];
-	Descritor *D;
-	init(&D);
 	Arqs *aberto = NULL;
 	
 	Dir *dir = NULL;
 	iniciarDir(&dir);
 	
 	do{
-		fflush(stdin);
-		gets(comando);
-		SeparaString(comando,&D);
-		op=ReconhecerComando(&D,retorno,retorno2);
+		op = menu();
 		
 		switch(op){
-			case 1: 
-				Setdefaultto(&dir,retorno);
+			case 'h': 
+				Setdefaultto(&dir);
 				break;
 				
-			case 2: 
-				Create(&dir,retorno);
+			case 'd': 
+				Create(&dir);
 				break;
 				
-			case 3: 
+			case 'e': 
 				ExibirDir(dir);
 				break;
 			
-			case 5: 
-				aberto = Use(dir,retorno);
+			case 'u': 
+				aberto = Use(dir);
 				break;
 				
-			case 6: 
+			case 's': 
 				ListStructure(aberto,dir->und);
 				break;
 			
-			case 7: 
+			case 'a': 
 				Append(&aberto);
 				break;
-			
-			case 8: 
-				List(aberto);
+				
+			//List Comun
+			case 'l': 
+				List(aberto,(char*)"",(char*)"",0);
+				break;
+				
+			//List for	
+			case 'f': 
+				List(aberto,(char*)"nome",(char*)"Jo",1);
 				break;
 			
-			default: printf("\nErro %d - %s\n",op,retorno);
+			default: printf("\nErro -  comando inexistene!\n");
 		}
 		
-	}while(op != 4);
+	}while(op != 27);
 	printf("\nProcesso finalizado!");
 	
 }
